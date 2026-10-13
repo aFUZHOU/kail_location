@@ -91,12 +91,20 @@ class ServiceGoDeveloper : Service() {
         const val ACTION_STATUS_CHANGED = ServiceConstants.ACTION_STATUS_CHANGED
         const val EXTRA_IS_SIMULATING = ServiceConstants.EXTRA_IS_SIMULATING
         const val EXTRA_IS_PAUSED = ServiceConstants.EXTRA_IS_PAUSED
+        const val EXTRA_STATUS_REASON = ServiceConstants.EXTRA_STATUS_REASON
     }
 
-    private fun broadcastStatus() {
+    /**
+     * 广播当前模拟状态。
+     *
+     * @param simulating 强制指定是否模拟中；null 表示按内部状态推导。
+     * @param reason 状态变化原因（启动失败时附带错误信息，供 UI 反馈）。
+     */
+    private fun broadcastStatus(simulating: Boolean? = null, reason: String? = null) {
         val intent = Intent(ACTION_STATUS_CHANGED).apply {
-            putExtra(EXTRA_IS_SIMULATING, locationLoopStarted && !isStop)
+            putExtra(EXTRA_IS_SIMULATING, simulating ?: (locationLoopStarted && !isStop))
             putExtra(EXTRA_IS_PAUSED, isStop)
+            reason?.let { putExtra(EXTRA_STATUS_REASON, it) }
             setPackage(packageName)
         }
         sendBroadcast(intent)
@@ -267,8 +275,19 @@ class ServiceGoDeveloper : Service() {
 
             KailLog.i(this, "ServiceGoDeveloper", "onStartCommand received lat=$mCurLat, lng=$mCurLng")
 
-            mMockLocationProvider.ensureProviders()
-            startLocationLoop()
+            // 修复：provider 注册或 loop 启动异常时，必须广播失败状态，
+            // 否则 UI 会停留在"启动中"直到 30s 超时且拿不到任何失败原因
+            try {
+                mMockLocationProvider.ensureProviders()
+                startLocationLoop()
+            } catch (e: Throwable) {
+                locationLoopStarted = false
+                isStop = true
+                KailLog.e(this, "ServiceGoDeveloper",
+                    "位置模拟启动失败：${e.javaClass.simpleName}: ${e.message}", e)
+                broadcastStatus(false, e.message ?: e.javaClass.simpleName)
+                stopSelf()
+            }
 
             try {
                 mJoystickViewModel.setCurrentPosition(mCurLng, mCurLat, mCurAlt)
@@ -405,7 +424,14 @@ class ServiceGoDeveloper : Service() {
     }
 
     private fun startLocationLoop() {
-        if (!this::mLocHandler.isInitialized) return
+        if (!this::mLocHandler.isInitialized) {
+            // 修复：handler 未初始化时不能静默 return——广播失败状态并记录日志，
+            // 否则 UI 一直显示"启动中"直到超时，且用户看不到任何失败原因
+            KailLog.e(this, "ServiceGoDeveloper",
+                "startLocationLoop aborted: location handler not initialized (initGoLocation may have failed)")
+            broadcastStatus(false, "handler-not-initialized")
+            return
+        }
         isStop = false
         if (locationLoopStarted) return
         locationLoopStarted = true

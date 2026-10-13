@@ -37,4 +37,6 @@ object ServiceConstants {
     const val ACTION_STATUS_CHANGED = "com.kail.location.service.STATUS_CHANGED"
     const val EXTRA_IS_SIMULATING = "is_simulating"
     const val EXTRA_IS_PAUSED = "is_paused"
+    /** 状态变化原因（启动失败时附带错误信息，供 UI 反馈；可选）。 */
+    const val EXTRA_STATUS_REASON = "status_reason"
 }

@@ -411,6 +411,8 @@
     <string name="vm_up_to_date">目前已是最新版本</string>
     <string name="vm_search_city">全國</string>
     <string name="vm_need_location_permission">需要位置權限才能啟動模擬</string>
+    <string name="vm_sim_start_failed">位置模擬啟動失敗：%1$s</string>
+    <string name="vm_sim_start_timeout">%1$s 啟動逾時：服務未回應，請重試</string>
     <string name="vm_unknown_location">未知地點</string>
     <string name="vm_step_root_required">步數模擬需要 ROOT 模式</string>
 

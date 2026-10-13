@@ -447,6 +447,8 @@
     <string name="vm_up_to_date">Already up to date</string>
     <string name="vm_search_city">China</string>
     <string name="vm_need_location_permission">Location permission required to start simulation</string>
+    <string name="vm_sim_start_failed">Location simulation failed to start: %1$s</string>
+    <string name="vm_sim_start_timeout">%1$s start timed out: service did not respond, please retry</string>
     <string name="vm_unknown_location">Unknown Location</string>
     <string name="vm_step_root_required">Step simulation requires ROOT mode</string>
 

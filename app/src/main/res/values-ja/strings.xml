@@ -412,6 +412,8 @@
     <string name="vm_up_to_date">すでに最新バージョンです</string>
     <string name="vm_search_city">全国</string>
     <string name="vm_need_location_permission">シミュレーションを開始するには位置情報権限が必要です</string>
+    <string name="vm_sim_start_failed">位置シミュレーションの開始に失敗しました：%1$s</string>
+    <string name="vm_sim_start_timeout">%1$s 開始がタイムアウトしました：サービスが応答しません。再試行してください</string>
     <string name="vm_unknown_location">不明な場所</string>
     <string name="vm_step_root_required">歩数シミュレーションには ROOT モードが必要です</string>
 

@@ -124,9 +124,19 @@ class LocationSimulationViewModel(application: Application) : AndroidViewModel(a
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != ServiceConstants.ACTION_STATUS_CHANGED) return
             val isSimulating = intent.getBooleanExtra(ServiceConstants.EXTRA_IS_SIMULATING, false)
+            val reason = intent.getStringExtra(ServiceConstants.EXTRA_STATUS_REASON)
             if (!isSimulating && _isStarting.value) {
                 startTimeoutJob?.cancel()
                 _isStarting.value = false
+                // 修复：启动失败不再静默——Toast 告知用户失败原因（服务启动异常/
+                // handler 未初始化/服务启动后崩溃都会走到这里）
+                val app = getApplication<Application>()
+                KailLog.persist(app, SimulationDiagnostics.TAG,
+                    "位置模拟启动失败广播：reason=$reason", 'w')
+                GoUtils.DisplayToast(
+                    app,
+                    app.getString(R.string.vm_sim_start_failed, reason ?: "")
+                )
             }
             if (isSimulating) {
                 startTimeoutJob?.cancel()
@@ -261,7 +271,24 @@ class LocationSimulationViewModel(application: Application) : AndroidViewModel(a
                         "位置模拟：启动 $svcName（模式=$currentRunMode）")
                     _isStarting.value = true
                     scheduleStartTimeout("位置模拟")
-                    ContextCompat.startForegroundService(app, intent)
+                    // 修复：Android 12+ 后台启动前台服务会抛
+                    // ForegroundServiceStartNotAllowedException，不捕获会导致
+                    // viewModelScope 协程未处理异常而崩溃
+                    try {
+                        ContextCompat.startForegroundService(app, intent)
+                    } catch (e: Exception) {
+                        startTimeoutJob?.cancel()
+                        _isStarting.value = false
+                        KailLog.persist(app, SimulationDiagnostics.TAG,
+                            "位置模拟启动异常：${e.javaClass.simpleName}: ${e.message}", 'e')
+                        GoUtils.DisplayToast(
+                            app,
+                            app.getString(
+                                R.string.vm_sim_start_failed,
+                                e.message ?: e.javaClass.simpleName
+                            )
+                        )
+                    }
                 } else {
                     KailLog.persist(app, SimulationDiagnostics.TAG,
                         "位置模拟启动被拦截：缺少 ACCESS_FINE_LOCATION 权限", 'w')
@@ -287,6 +314,8 @@ class LocationSimulationViewModel(application: Application) : AndroidViewModel(a
                 _isStarting.value = false
                 KailLog.persist(app, SimulationDiagnostics.TAG,
                     "$label 启动等待服务状态超时：未收到 STATUS_CHANGED=true", 'w')
+                // 修复：超时不再静默——提示用户启动未成功，可重试
+                GoUtils.DisplayToast(app, app.getString(R.string.vm_sim_start_timeout, label))
             }
         }
     }

@@ -659,6 +659,8 @@
     <string name="vm_up_to_date">当前已是最新版本</string>
     <string name="vm_search_city">全国</string>
     <string name="vm_need_location_permission">需要位置权限才能启动模拟</string>
+    <string name="vm_sim_start_failed">位置模拟启动失败：%1$s</string>
+    <string name="vm_sim_start_timeout">%1$s启动超时：服务未响应，请重试</string>
     <string name="vm_unknown_location">未知地点</string>
     <string name="vm_step_root_required">步频模拟需要 ROOT 模式</string>
     <string name="vm_system_not_ready">系统未就绪，请开机 %1$d 秒后再试（剩余约 %2$d 秒）</string>

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,17 @@ plugins {
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
 }
+
+// 发布签名配置：从 local.properties（已 gitignore）读取，缺省时 release 不签名
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val releaseKeystorePath = localProps.getProperty("KAIL_KEYSTORE")
+val releaseSigningReady = !releaseKeystorePath.isNullOrBlank() &&
+    !localProps.getProperty("KAIL_KEYSTORE_PASSWORD").isNullOrBlank() &&
+    !localProps.getProperty("KAIL_KEY_ALIAS").isNullOrBlank() &&
+    !localProps.getProperty("KAIL_KEY_PASSWORD").isNullOrBlank()
 
 android {
     namespace = "com.kail.location"
@@ -34,9 +47,23 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = localProps.getProperty("KAIL_KEYSTORE_PASSWORD")
+                keyAlias = localProps.getProperty("KAIL_KEY_ALIAS")
+                keyPassword = localProps.getProperty("KAIL_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseSigningReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
