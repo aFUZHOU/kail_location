@@ -5,14 +5,19 @@
 --   - 会员：按 user_id 记录每日/总量免费次数 + 订阅状态；
 --   - 游客：按 guest_id（客户端首次启动生成的 UUID）记录总量配额。
 -- 服务端是该表唯一权威写入口，客户端本地缓存仅作离线兜底。
+--
+-- 注意：当前客户端（自用版）游客为无限次，total_limit 默认值已设为 -1。
+-- 如需恢复限量模式，将默认值改回正整数（如 100），并同步修改客户端
+-- GuestModeManager.GUEST_FREE_TOTAL。存量行可用：
+--   UPDATE kail_guest_simulation_quota SET total_limit = -1;
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS `kail_guest_simulation_quota` (
     `id`             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `guest_id`       VARCHAR(64)  NOT NULL COMMENT '游客标识（客户端生成的 UUID）',
     `device_id`      VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '设备指纹（ANDROID_ID），用于风控/限流',
-    `used_count`     INT          NOT NULL DEFAULT 0 COMMENT '已用模拟次数',
-    `total_limit`    INT          NOT NULL DEFAULT 100 COMMENT '免费总上限；-1 表示无限次（服务端补偿）',
+    `used_count`     INT          NOT NULL DEFAULT 0 COMMENT '已用模拟次数（无限次模式下服务端不再累加，仅反映历史限量期用量）',
+    `total_limit`    INT          NOT NULL DEFAULT -1 COMMENT '免费总上限；-1 表示无限次（当前默认）',
     `first_time`     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '首次使用时间',
     `last_use_time`  DATETIME     DEFAULT NULL COMMENT '最近一次消耗时间',
     `create_time`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

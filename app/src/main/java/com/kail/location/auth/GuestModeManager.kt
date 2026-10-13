@@ -18,8 +18,9 @@ import kotlinx.coroutines.withContext
 /**
  * 游客模式管理器。
  *
- * 未登录用户无需注册/登录即可使用模拟功能，系统为每位游客提供
- * [GUEST_FREE_TOTAL] 次免费模拟机会。设计要点：
+ * 未登录用户无需注册/登录即可使用模拟功能。当前版本（自用版）游客
+ * 模拟机会为**无限次**（[GUEST_FREE_TOTAL] = -1，负值即无限的约定）。
+ * 设计要点：
  *
  * 1. **游客身份**：首次使用时生成 UUID（`guest_id`）并持久化在独立
  *    SharedPreferences（`guest_prefs`）中。登录/退出登录不影响该 ID，
@@ -28,8 +29,13 @@ import kotlinx.coroutines.withContext
  * 2. **服务端权威**：已用次数以服务端记录为准，本地缓存仅作离线兜底与展示。
  * 3. **离线兜底**：网络不可用时按本地缓存校验与扣减，同时记录 pending 增量，
  *    下次联网时通过 `guestSync` 对账（服务端原子累加并受上限保护）。
- * 4. **次数用尽引导**：用尽时自增 [exhaustedEventId]，由 UI 弹出
- *    "登录/注册"引导对话框（见 `views/common/GuestQuotaDialog.kt`）。
+ * 4. **无限次保障**（[GUEST_FREE_TOTAL] < 0 时生效）：
+ *    - 本地 limit 恒钳制为 -1，无视旧服务端返回的有限 limit；
+ *    - 服务端返回"次数用尽"（1401）时放行而非拦截；
+ *    - 离线兜底不扣减、不记 pending。
+ *    将 [GUEST_FREE_TOTAL] 改回正数即可恢复限量模式，全部逻辑自动回归。
+ * 5. **次数用尽引导**：仅限量模式可用尽；用尽时自增 [exhaustedEventId]，
+ *    由 UI 弹出引导对话框（见 `views/common/GuestQuotaDialog.kt`）。
  */
 object GuestModeManager {
     private const val TAG = "GuestModeManager"
@@ -42,8 +48,11 @@ object GuestModeManager {
     private const val KEY_LAST_SYNC = "guest_last_sync_ts"
     private const val KEY_SYNCED_ONCE = "guest_synced_once"
 
-    /** 每位游客的免费模拟总次数。 */
-    const val GUEST_FREE_TOTAL = 100
+    /**
+     * 每位游客的免费模拟总次数。
+     * -1 = 无限次（当前自用版配置）；改为正数即恢复限量模式。
+     */
+    const val GUEST_FREE_TOTAL = -1
 
     /** 与服务端同步的最小间隔（毫秒），避免每次开始模拟都打网络。 */
     private const val SYNC_INTERVAL_MS = 5 * 60 * 1000L
@@ -107,11 +116,22 @@ object GuestModeManager {
     }
 
     /**
+     * 本地配置为无限次（[GUEST_FREE_TOTAL] < 0）时，无视服务端返回的
+     * limit，恒钳制为 -1；限量模式下原样采用服务端值。
+     */
+    private fun effectiveLimit(serverLimit: Int): Int =
+        if (GUEST_FREE_TOTAL < 0) -1 else serverLimit
+
+    /**
      * 游客是否可以开始模拟（只检查，不扣次数）。
      * 服务端不可达时退化为本地缓存校验；本地缓存也从未同步过时按初始值放行
      * （全新游客首次离线使用），联网后由 [syncIfNeeded] 对账兜底。
      */
     suspend fun canStartSimulation(context: Context): Boolean {
+        // 无限次模式（GUEST_FREE_TOTAL < 0）：跳过一切配额判断，直接放行。
+        // 不触发 syncIfNeeded 以避免无意义的网络请求；限量期残留的 pending 由
+        // init() 启动时的 force 同步清理。
+        if (GUEST_FREE_TOTAL < 0) return true
         syncIfNeeded()
         val (used, limit) = synchronized(lock) {
             prefs.getInt(KEY_USED, 0) to prefs.getInt(KEY_LIMIT, GUEST_FREE_TOTAL)
@@ -131,6 +151,8 @@ object GuestModeManager {
      * - 网络等异常：离线兜底——本地未用尽则扣一次并记 pending，否则按用尽处理。
      */
     suspend fun consumeSimulation(context: Context): Boolean {
+        // 无限次模式（GUEST_FREE_TOTAL < 0）：无需扣减、不打网络、不记 pending，直接放行
+        if (GUEST_FREE_TOTAL < 0) return true
         val id = guestId
         if (id.isBlank()) {
             KailLog.w(context, TAG, "consumeSimulation=false: guest id not ready")
@@ -145,18 +167,23 @@ object GuestModeManager {
             synchronized(lock) {
                 prefs.edit()
                     .putInt(KEY_USED, effectiveUsed.coerceAtLeast(0))
-                    .putInt(KEY_LIMIT, info.limit)
+                    .putInt(KEY_LIMIT, effectiveLimit(info.limit))
                     .putLong(KEY_LAST_SYNC, System.currentTimeMillis())
                     .putBoolean(KEY_SYNCED_ONCE, true)
                     .apply()
                 syncedOnce = true
                 reloadFromPrefsLocked()
             }
-            KailLog.i(context, TAG, "consumeSimulation: server consumed, used=${info.used}(+$pending pending) limit=${info.limit}")
+            KailLog.i(context, TAG, "consumeSimulation: server consumed, used=${info.used}(+$pending pending) limit=${effectiveLimit(info.limit)}")
             return true
         }
         val ex = result.exceptionOrNull()
         if (ex is GuestQuotaExhaustedException) {
+            if (GUEST_FREE_TOTAL < 0) {
+                // 无限次模式：服务端若仍是旧限额返回 1401，以本地无限为准放行
+                KailLog.i(context, TAG, "consumeSimulation: server says exhausted but guest unlimited locally, allow")
+                return true
+            }
             synchronized(lock) {
                 val limit = prefs.getInt(KEY_LIMIT, GUEST_FREE_TOTAL)
                     .let { if (it < 0) GUEST_FREE_TOTAL else it }
@@ -215,7 +242,7 @@ object GuestModeManager {
             synchronized(lock) {
                 prefs.edit()
                     .putInt(KEY_USED, info.used.coerceAtLeast(0))
-                    .putInt(KEY_LIMIT, info.limit)
+                    .putInt(KEY_LIMIT, effectiveLimit(info.limit))
                     // 只扣减已成功对账的部分：对账期间新产生的离线消耗继续保留待下次同步
                     .putInt(KEY_PENDING, (prefs.getInt(KEY_PENDING, 0) - flushed).coerceAtLeast(0))
                     .putLong(KEY_LAST_SYNC, System.currentTimeMillis())
@@ -224,7 +251,7 @@ object GuestModeManager {
                 syncedOnce = true
                 reloadFromPrefsLocked()
             }
-            KailLog.i(null, TAG, "syncIfNeeded: synced used=${info.used} limit=${info.limit} flushed=$flushed")
+            KailLog.i(null, TAG, "syncIfNeeded: synced used=${info.used} limit=${effectiveLimit(info.limit)} flushed=$flushed")
             true
         }
     }

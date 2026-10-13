@@ -24,18 +24,22 @@ import com.kail.location.auth.GuestModeManager
  * Composable function for the navigation drawer header.
  * Displays app icon, name, version, and a tip message.
  *
+ * 登录体系 UI 隐藏时（[AuthManager.LOGIN_UI_ENABLED] = false）：
+ * 头部不可点击，且不展示登录态邮箱，统一显示游客标签。
+ *
  * @param version The app version string to display.
  */
 @Composable
 fun DrawerHeader(version: String, onLoginClick: (() -> Unit)? = null, onProfileClick: (() -> Unit)? = null) {
     val isLoggedIn by AuthManager.isLoggedInState
     val userEmail by AuthManager.emailState
+    val loginUiEnabled = AuthManager.LOGIN_UI_ENABLED
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable {
+            .clickable(enabled = loginUiEnabled) {
                 if (isLoggedIn) onProfileClick?.invoke()
                 else onLoginClick?.invoke()
             }
@@ -60,20 +64,19 @@ fun DrawerHeader(version: String, onLoginClick: (() -> Unit)? = null, onProfileC
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                if (isLoggedIn) {
+                if (loginUiEnabled && isLoggedIn) {
                     Text(
                         text = userEmail,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 } else {
-                    // 游客模式：展示剩余免费次数（-1 表示服务端无限次补偿）
+                    // 游客模式：展示剩余免费次数（-1 表示无限次）
                     val guestRemaining by GuestModeManager.guestRemainingState
                     Text(
-                        text = if (guestRemaining < 0) {
-                            stringResource(R.string.guest_mode_label)
-                        } else {
-                            stringResource(R.string.guest_mode_remaining, guestRemaining)
+                        text = when {
+                            guestRemaining < 0 -> stringResource(R.string.guest_mode_unlimited)
+                            else -> stringResource(R.string.guest_mode_remaining, guestRemaining)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer

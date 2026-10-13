@@ -460,6 +460,7 @@
     <!-- Guest Mode -->
     <string name="guest_mode_label">ゲストモード</string>
     <string name="guest_mode_remaining">ゲストモード · 残り %1$d 回の無料シミュレーション</string>
+    <string name="guest_mode_unlimited">ゲストモード · 無制限</string>
     <string name="guest_quota_exhausted_title">ゲストの無料回数を使い切りました</string>
     <string name="guest_quota_exhausted_message">ゲストは %1$d 回まで無料で体験できますが、無料回数を使い切りました。ログイン/登録すると引き続き利用できます。購読会員は無制限に利用できます。</string>
     <string name="guest_quota_exhausted_login">ログイン / 登録</string>

@@ -463,6 +463,7 @@
     <!-- Guest Mode -->
     <string name="guest_mode_label">訪客模式</string>
     <string name="guest_mode_remaining">訪客模式 · 剩餘 %1$d 次免費模擬</string>
+    <string name="guest_mode_unlimited">訪客模式 · 無限次使用</string>
     <string name="guest_quota_exhausted_title">訪客體驗次數已用完</string>
     <string name="guest_quota_exhausted_message">每位訪客可免費體驗 %1$d 次模擬，您的免費次數已用完。登入/註冊後可繼續使用模擬功能，訂閱會員更可無限次使用。</string>
     <string name="guest_quota_exhausted_login">登入 / 註冊</string>

@@ -280,13 +280,13 @@ fun LocationSimulationScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                // 游客模式：展示剩余免费模拟次数
+                                // 游客模式：展示剩余免费模拟次数（-1 表示无限次）
                                 val isLoggedIn by AuthManager.isLoggedInState
                                 if (!isLoggedIn) {
                                     val guestRemaining by GuestModeManager.guestRemainingState
                                     Text(
                                         text = if (guestRemaining < 0) {
-                                            stringResource(R.string.guest_mode_label)
+                                            stringResource(R.string.guest_mode_unlimited)
                                         } else {
                                             stringResource(R.string.guest_mode_remaining, guestRemaining)
                                         },
@@ -637,7 +637,9 @@ Row(
         )
     }
 
-    if (showGuestQuotaDialog) {
+    // 游客次数用尽引导对话框。无限次模式下不会触发；登录体系 UI 隐藏时
+    // 同样不弹出（双保险），代码保留待恢复。
+    if (AuthManager.LOGIN_UI_ENABLED && showGuestQuotaDialog) {
         GuestQuotaExhaustedDialog(
             freeTotal = GuestModeManager.GUEST_FREE_TOTAL,
             onLogin = {

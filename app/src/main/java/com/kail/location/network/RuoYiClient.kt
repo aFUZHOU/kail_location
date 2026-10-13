@@ -49,8 +49,9 @@ object RuoYiClient {
     /**
      * 服务端缺失 limit 字段时的兜底值，需与 GuestModeManager.GUEST_FREE_TOTAL 保持一致。
      * 服务端 GuestQuotaVO 恒返回该字段，此处仅防御解析异常（缺省 0 会误判为"无次数可用"）。
+     * 当前为 -1：游客无限次（与 GuestModeManager.GUEST_FREE_TOTAL 同步调整）。
      */
-    private const val GUEST_FALLBACK_LIMIT = 100
+    private const val GUEST_FALLBACK_LIMIT = -1
 
     private fun Request.Builder.withTenant(): Request.Builder {
         return this.header("tenant-id", "1")

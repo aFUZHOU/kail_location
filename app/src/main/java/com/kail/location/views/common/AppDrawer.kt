@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kail.location.R
+import com.kail.location.auth.AuthManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -50,13 +51,16 @@ fun AppDrawer(
     var envMessage by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    if (showLoginActivity) {
+    // 登录体系 UI 隐藏时（自用版）：以下跳转与入口不生效，代码保留待开关恢复
+    val loginUiEnabled = AuthManager.LOGIN_UI_ENABLED
+
+    if (loginUiEnabled && showLoginActivity) {
         val intent = Intent(context, com.kail.location.views.auth.LoginActivity::class.java)
         context.startActivity(intent)
         showLoginActivity = false
     }
 
-    if (showProfileActivity) {
+    if (loginUiEnabled && showProfileActivity) {
         val intent = Intent(context, com.kail.location.views.auth.ProfileActivity::class.java)
         context.startActivity(intent)
         showProfileActivity = false
@@ -487,13 +491,15 @@ fun AppDrawer(
                     onClick = { scope.launch { closeDrawerSmooth(); onNavigate(R.id.nav_contact) } }
                 )
             }
-            item {
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_menu_sponsor)) },
-                    icon = { Icon(painterResource(R.drawable.ic_user), contentDescription = null) },
-                    selected = false,
-                    onClick = { scope.launch { closeDrawerSmooth(); onNavigate(R.id.nav_sponsor) } }
-                )
+            if (loginUiEnabled) {
+                item {
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.nav_menu_sponsor)) },
+                        icon = { Icon(painterResource(R.drawable.ic_user), contentDescription = null) },
+                        selected = false,
+                        onClick = { scope.launch { closeDrawerSmooth(); onNavigate(R.id.nav_sponsor) } }
+                    )
+                }
             }
             item {
                 NavigationDrawerItem(

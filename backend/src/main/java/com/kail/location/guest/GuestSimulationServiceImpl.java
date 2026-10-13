@@ -15,8 +15,11 @@ import javax.annotation.Resource;
 @Service
 public class GuestSimulationServiceImpl implements GuestSimulationService {
 
-    /** 新游客的默认免费总次数。 */
-    private static final int DEFAULT_TOTAL_LIMIT = 100;
+    /**
+     * 新游客的默认免费总次数。-1 = 无限次（当前自用版配置）。
+     * 恢复限量模式时改为正整数，并与客户端 GuestModeManager.GUEST_FREE_TOTAL 保持一致。
+     */
+    private static final int DEFAULT_TOTAL_LIMIT = -1;
 
     /**
      * 同一设备指纹允许创建的游客记录数上限（防"清除数据反复刷配额"）。

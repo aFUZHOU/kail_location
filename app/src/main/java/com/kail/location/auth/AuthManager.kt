@@ -10,6 +10,21 @@ import java.util.TimeZone
 
 object AuthManager {
 
+    /**
+     * 登录体系 UI 总开关。
+     *
+     * - `false`（当前）：自用版。隐藏所有登录/注册/订阅/个人中心入口与可见组件
+     *   （抽屉头点击跳转、赞助/订阅页、游客次数用尽时的登录引导等），
+     *   未登录用户以游客身份无限次使用全部模拟功能。
+     * - `true`：恢复完整登录体系，所有入口与引导重新生效。
+     *
+     * 注意：本开关**只控制 UI 入口的显隐**，不触碰认证核心代码与逻辑——
+     * 本类的登录态/token/订阅校验、`UsageManager` 门控、
+     * `RuoYiClient` 全部登录/订阅接口、`LoginActivity`/`ProfileActivity`/
+     * `SponsorActivity` 等页面代码均完整保留，改回 `true` 即可重新启用。
+     */
+    const val LOGIN_UI_ENABLED = false
+
     private const val PREFS_NAME = "auth_prefs"
     private const val KEY_TOKEN = "auth_token"
     private const val KEY_EMAIL = "auth_email"

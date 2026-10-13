@@ -30,13 +30,15 @@
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/guest/simulation/check` | 查询配额，首次自动建记录（100 次） |
+| GET | `/guest/simulation/check` | 查询配额，首次自动建记录（默认无限次） |
 | POST | `/guest/simulation/use` | 原子扣减 1 次；用尽返回 `code=1401` |
 | POST | `/guest/simulation/sync` | 离线对账，body `{"delta": n}`，服务端截断到上限 |
 
-成功响应：`{"code":0,"msg":"","data":{"used":12,"limit":100,"remaining":88}}`；
-`limit=-1` / `remaining=-1` 表示服务端开启了无限次补偿（管理员把
-`total_limit` 改成 -1 即生效，客户端同步识别）。
+成功响应：`{"code":0,"msg":"","data":{"used":12,"limit":-1,"remaining":-1}}`；
+`limit=-1` / `remaining=-1` 表示无限次（当前默认配置：DDL 默认值与
+`DEFAULT_TOTAL_LIMIT` 均为 -1）。恢复限量模式：把 DDL 默认值、
+`DEFAULT_TOTAL_LIMIT` 与客户端 `GuestModeManager.GUEST_FREE_TOTAL`
+同步改为正整数（如 100）即可。
 
 ## 合并步骤
 
