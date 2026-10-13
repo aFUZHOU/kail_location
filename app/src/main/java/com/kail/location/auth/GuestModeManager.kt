@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.provider.Settings
 import androidx.compose.runtime.mutableStateOf
-import com.kail.location.network.GuestQuotaExhaustedException
 import com.kail.location.network.RuoYiClient
+import com.kail.location.network.RuoYiClient.GuestQuotaExhaustedException
 import com.kail.location.utils.KailLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
