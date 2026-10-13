@@ -710,6 +710,15 @@
     <string name="usage_free_exhausted">今日免费模拟次数已用完，订阅后可无限使用</string>
     <string name="usage_count_exhausted">模拟次数已用完</string>
 
+    <!-- Guest Mode -->
+    <string name="guest_mode_label">游客模式</string>
+    <string name="guest_mode_remaining">游客模式 · 剩余 %1$d 次免费模拟</string>
+    <string name="guest_quota_exhausted_title">游客体验次数已用完</string>
+    <string name="guest_quota_exhausted_message">每位游客可免费体验 %1$d 次模拟，您的免费次数已用完。登录/注册后可继续使用模拟功能，订阅会员更可无限次使用。</string>
+    <string name="guest_quota_exhausted_login">登录 / 注册</string>
+    <string name="guest_quota_exhausted_later">稍后再说</string>
+    <string name="usage_guest_exhausted">游客免费次数已用完，登录后可继续使用</string>
+
     <!-- API Errors -->
     <string name="api_error_remaining">获取剩余次数失败</string>
     <string name="api_error_send_code">发送验证码失败</string>

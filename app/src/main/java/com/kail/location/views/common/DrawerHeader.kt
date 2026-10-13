@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kail.location.R
 import com.kail.location.auth.AuthManager
+import com.kail.location.auth.GuestModeManager
 
 /**
  * Composable function for the navigation drawer header.
@@ -66,8 +67,14 @@ fun DrawerHeader(version: String, onLoginClick: (() -> Unit)? = null, onProfileC
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 } else {
+                    // 游客模式：展示剩余免费次数（-1 表示服务端无限次补偿）
+                    val guestRemaining by GuestModeManager.guestRemainingState
                     Text(
-                        text = stringResource(R.string.drawer_not_logged_in),
+                        text = if (guestRemaining < 0) {
+                            stringResource(R.string.guest_mode_label)
+                        } else {
+                            stringResource(R.string.guest_mode_remaining, guestRemaining)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )

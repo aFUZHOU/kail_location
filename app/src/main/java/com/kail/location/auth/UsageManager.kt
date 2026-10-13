@@ -36,14 +36,18 @@ object UsageManager {
 
     /**
      * Check if user can start simulation (does NOT consume a count)
+     *
+     * 门控顺序：
+     * 1. 未登录 → 游客模式：使用游客免费次数（每位游客 [GuestModeManager.GUEST_FREE_TOTAL] 次，
+     *    服务端权威记录 + 本地离线兜底）；用尽时提示并引导登录/注册。
+     * 2. 已订阅 → 直接放行（无限次）。
+     * 3. 已登录未订阅 → 走会员免费次数校验（服务端 remainingToday）。
      */
     suspend fun canStartSimulation(context: Context): Boolean {
         if (!AuthManager.isLoggedIn) {
-            KailLog.i(context, TAG, "canStartSimulation=false: not logged in")
-            withContext(Dispatchers.Main) {
-                android.widget.Toast.makeText(context, context.getString(R.string.usage_not_logged_in), android.widget.Toast.LENGTH_SHORT).show()
-            }
-            return false
+            // 游客模式：无需注册/登录即可体验，次数用尽时引导登录
+            KailLog.i(context, TAG, "canStartSimulation: guest mode")
+            return GuestModeManager.canStartSimulation(context)
         }
 
         refreshSubscription()
@@ -93,9 +97,13 @@ object UsageManager {
 
     /**
      * Consume one simulation count. Call this when user actually starts simulating.
+     * 未登录用户走游客配额扣减（含离线兜底与对账）。
      */
     suspend fun consumeSimulation(context: Context): Boolean {
-        if (!AuthManager.isLoggedIn) return false
+        if (!AuthManager.isLoggedIn) {
+            KailLog.i(context, TAG, "consumeSimulation: guest mode")
+            return GuestModeManager.consumeSimulation(context)
+        }
         if (AuthManager.isSubscriptionActive()) return true
 
         val token = AuthManager.token ?: return false

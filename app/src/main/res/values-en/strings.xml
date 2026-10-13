@@ -497,6 +497,15 @@
     <string name="usage_free_exhausted">Free daily simulations exhausted. Subscribe for unlimited use.</string>
     <string name="usage_count_exhausted">Simulation count exhausted</string>
 
+    <!-- Guest Mode -->
+    <string name="guest_mode_label">Guest Mode</string>
+    <string name="guest_mode_remaining">Guest mode · %1$d free simulations left</string>
+    <string name="guest_quota_exhausted_title">Guest free trials used up</string>
+    <string name="guest_quota_exhausted_message">Each guest gets %1$d free simulations, and yours are used up. Log in / sign up to continue; subscribers enjoy unlimited simulations.</string>
+    <string name="guest_quota_exhausted_login">Log in / Sign up</string>
+    <string name="guest_quota_exhausted_later">Later</string>
+    <string name="usage_guest_exhausted">Guest free simulations used up. Log in to continue.</string>
+
     <!-- API Errors -->
     <string name="api_error_remaining">Failed to get remaining count</string>
     <string name="api_error_send_code">Failed to send verification code</string>

@@ -455,6 +455,15 @@
     <string name="usage_free_exhausted">今日免費模擬次數已用完，訂閱後可無限使用</string>
     <string name="usage_count_exhausted">模擬次數已用完</string>
 
+    <!-- Guest Mode -->
+    <string name="guest_mode_label">訪客模式</string>
+    <string name="guest_mode_remaining">訪客模式 · 剩餘 %1$d 次免費模擬</string>
+    <string name="guest_quota_exhausted_title">訪客體驗次數已用完</string>
+    <string name="guest_quota_exhausted_message">每位訪客可免費體驗 %1$d 次模擬，您的免費次數已用完。登入/註冊後可繼續使用模擬功能，訂閱會員更可無限次使用。</string>
+    <string name="guest_quota_exhausted_login">登入 / 註冊</string>
+    <string name="guest_quota_exhausted_later">稍後再說</string>
+    <string name="usage_guest_exhausted">訪客免費次數已用完，登入後可繼續使用</string>
+
     <!-- API Errors -->
     <string name="api_error_remaining">獲取剩餘次數失敗</string>
     <string name="api_error_send_code">發送驗證碼失敗</string>

@@ -42,6 +42,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import android.widget.ImageView
 import com.kail.location.R
+import com.kail.location.auth.AuthManager
+import com.kail.location.auth.GuestModeManager
 import com.kail.location.viewmodels.LocationSimulationViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.scale
@@ -55,6 +57,7 @@ import androidx.preference.PreferenceManager
 import android.content.Intent
 import android.net.Uri
 import com.kail.location.views.common.UpdateDialog
+import com.kail.location.views.common.GuestQuotaExhaustedDialog
 import com.kail.location.models.HistoryRecord
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Edit
@@ -117,6 +120,17 @@ fun LocationSimulationScreen(
     var isCardExpanded by remember { mutableStateOf(true) }
     var showHelp by remember { mutableStateOf(false) }
     var screenSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // 游客次数用尽引导：事件 ID 每次用尽 +1，去重后弹出登录/注册对话框
+    val guestExhaustedEventId by GuestModeManager.exhaustedEventId
+    var lastHandledGuestEventId by remember { mutableStateOf(0L) }
+    var showGuestQuotaDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(guestExhaustedEventId) {
+        if (guestExhaustedEventId != lastHandledGuestEventId) {
+            lastHandledGuestEventId = guestExhaustedEventId
+            showGuestQuotaDialog = true
+        }
+    }
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -265,6 +279,22 @@ fun LocationSimulationScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
+
+                                // 游客模式：展示剩余免费模拟次数
+                                val isLoggedIn by AuthManager.isLoggedInState
+                                if (!isLoggedIn) {
+                                    val guestRemaining by GuestModeManager.guestRemainingState
+                                    Text(
+                                        text = if (guestRemaining < 0) {
+                                            stringResource(R.string.guest_mode_label)
+                                        } else {
+                                            stringResource(R.string.guest_mode_remaining, guestRemaining)
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
 
 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -604,6 +634,19 @@ Row(
             onDismiss = { showSettingsDialog = false },
             onStepSimulationToggle = onStepSimulationToggle,
             onStepCadenceChange = onStepCadenceChange
+        )
+    }
+
+    if (showGuestQuotaDialog) {
+        GuestQuotaExhaustedDialog(
+            freeTotal = GuestModeManager.GUEST_FREE_TOTAL,
+            onLogin = {
+                showGuestQuotaDialog = false
+                context.startActivity(
+                    Intent(context, com.kail.location.views.auth.LoginActivity::class.java)
+                )
+            },
+            onDismiss = { showGuestQuotaDialog = false }
         )
     }
 }

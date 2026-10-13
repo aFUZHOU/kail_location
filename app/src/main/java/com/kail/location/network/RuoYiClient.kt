@@ -28,12 +28,41 @@ object RuoYiClient {
         val verified: Boolean
     )
 
+    /**
+     * 游客配额信息。
+     * @param used 已用次数
+     * @param limit 总上限；-1 表示服务端开启了无限次补偿
+     * @param remaining 剩余次数；-1 表示无限
+     */
+    data class GuestQuotaInfo(
+        val used: Int,
+        val limit: Int,
+        val remaining: Int
+    )
+
+    /** 游客免费次数已用完（服务端返回 1401 时抛出，用于与网络异常区分）。 */
+    class GuestQuotaExhaustedException(message: String) : Exception(message)
+
+    /** 服务端"游客次数用尽"的业务码。 */
+    private const val GUEST_QUOTA_EXHAUSTED_CODE = 1401
+
+    /**
+     * 服务端缺失 limit 字段时的兜底值，需与 GuestModeManager.GUEST_FREE_TOTAL 保持一致。
+     * 服务端 GuestQuotaVO 恒返回该字段，此处仅防御解析异常（缺省 0 会误判为"无次数可用"）。
+     */
+    private const val GUEST_FALLBACK_LIMIT = 100
+
     private fun Request.Builder.withTenant(): Request.Builder {
         return this.header("tenant-id", "1")
     }
 
     private fun Request.Builder.withAuth(token: String): Request.Builder {
         return this.header("Authorization", "Bearer $token")
+    }
+
+    /** 游客接口无需登录 token，通过 guest-id / device-id 头标识身份。 */
+    private fun Request.Builder.withGuest(guestId: String, deviceId: String): Request.Builder {
+        return this.header("guest-id", guestId).header("device-id", deviceId)
     }
 
     fun checkSimulation(token: String): Result<Int> {
@@ -81,6 +110,115 @@ object RuoYiClient {
                 throw Exception(root.optString("msg", "模拟次数已用完"))
             }
         }.onFailure { KailLog.w(null, TAG, "useSimulation failed: ${it.message}") }
+    }
+
+    /**
+     * 查询游客配额（只读，不扣次数）。
+     * 未注册过的 guestId 会在服务端自动创建记录并返回全量配额。
+     */
+    fun guestCheck(guestId: String, deviceId: String): Result<GuestQuotaInfo> {
+        return runCatching {
+            val url = "$baseUrl/guest/simulation/check"
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .header("Content-Type", JSON_TYPE)
+                .withGuest(guestId, deviceId)
+                .withTenant()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+            val root = JSONObject(body)
+            val code = root.optInt("code", -1)
+            if (code != 0) {
+                throw Exception(root.optString("msg", "获取游客剩余次数失败"))
+            }
+            val data = root.getJSONObject("data")
+            val info = GuestQuotaInfo(
+                used = data.optInt("used", 0),
+                limit = data.optInt("limit", GUEST_FALLBACK_LIMIT),
+                remaining = data.optInt("remaining", 0)
+            )
+            KailLog.i(null, TAG, "guestCheck: http=${response.code} used=${info.used} limit=${info.limit} remaining=${info.remaining}")
+            info
+        }.onFailure { KailLog.w(null, TAG, "guestCheck failed: ${it.message}") }
+    }
+
+    /**
+     * 游客扣减一次模拟机会（服务端原子扣减，越界返回 1401）。
+     * 抛出 [GuestQuotaExhaustedException] 表示次数已用尽（与网络异常区分）。
+     */
+    fun guestUse(guestId: String, deviceId: String): Result<GuestQuotaInfo> {
+        return runCatching {
+            val url = "$baseUrl/guest/simulation/use"
+            val request = Request.Builder()
+                .url(url)
+                .post("{}".toRequestBody(JSON_TYPE.toMediaType()))
+                .header("Content-Type", JSON_TYPE)
+                .withGuest(guestId, deviceId)
+                .withTenant()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+            val root = JSONObject(body)
+            val code = root.optInt("code", -1)
+            if (code == GUEST_QUOTA_EXHAUSTED_CODE) {
+                throw GuestQuotaExhaustedException(root.optString("msg", "游客免费次数已用完"))
+            }
+            if (code != 0) {
+                throw Exception(root.optString("msg", "扣减游客次数失败"))
+            }
+            val data = root.getJSONObject("data")
+            val info = GuestQuotaInfo(
+                used = data.optInt("used", 0),
+                limit = data.optInt("limit", GUEST_FALLBACK_LIMIT),
+                remaining = data.optInt("remaining", 0)
+            )
+            KailLog.i(null, TAG, "guestUse: http=${response.code} used=${info.used} limit=${info.limit} remaining=${info.remaining}")
+            info
+        }.onFailure { e ->
+            if (e is GuestQuotaExhaustedException) {
+                KailLog.i(null, TAG, "guestUse: guest quota exhausted")
+            } else {
+                KailLog.w(null, TAG, "guestUse failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * 游客离线消耗对账：把客户端离线期间累计的 [delta] 次消耗补记到服务端。
+     * 服务端原子累加并受上限保护（超出上限则截断），返回最新配额。
+     */
+    fun guestSync(guestId: String, delta: Int, deviceId: String): Result<GuestQuotaInfo> {
+        return runCatching {
+            val url = "$baseUrl/guest/simulation/sync"
+            val json = JSONObject().apply { put("delta", delta) }
+            val request = Request.Builder()
+                .url(url)
+                .post(json.toString().toRequestBody(JSON_TYPE.toMediaType()))
+                .header("Content-Type", JSON_TYPE)
+                .withGuest(guestId, deviceId)
+                .withTenant()
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+            val root = JSONObject(body)
+            val code = root.optInt("code", -1)
+            if (code != 0) {
+                throw Exception(root.optString("msg", "对账游客次数失败"))
+            }
+            val data = root.getJSONObject("data")
+            val info = GuestQuotaInfo(
+                used = data.optInt("used", 0),
+                limit = data.optInt("limit", GUEST_FALLBACK_LIMIT),
+                remaining = data.optInt("remaining", 0)
+            )
+            KailLog.i(null, TAG, "guestSync: http=${response.code} delta=$delta used=${info.used} limit=${info.limit}")
+            info
+        }.onFailure { KailLog.w(null, TAG, "guestSync failed: ${it.message}") }
     }
 
     fun sendMailCode(mail: String, scene: Int): Result<Unit> {

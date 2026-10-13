@@ -11,6 +11,7 @@ import com.baidu.mapapi.SDKInitializer
 import com.google.firebase.FirebaseApp
 import com.kail.location.R
 import com.kail.location.auth.AuthManager
+import com.kail.location.auth.GuestModeManager
 import com.kail.location.auth.UsageManager
 import com.kail.location.sandbox.SandboxManager
 import com.kail.location.sandbox.SandboxSettingsManager
@@ -112,6 +113,7 @@ class GoApplication : Application(), Application.ActivityLifecycleCallbacks {
 
         AuthManager.init(this)
         UsageManager.init(this)
+        GuestModeManager.init(this)
 
         registerActivityLifecycleCallbacks(this)
 

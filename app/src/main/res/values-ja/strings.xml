@@ -455,6 +455,15 @@
     <string name="usage_free_exhausted">本日の無料シミュレーション回数を使い切りました。購読すると無制限に利用できます。</string>
     <string name="usage_count_exhausted">シミュレーション回数を使い切りました</string>
 
+    <!-- Guest Mode -->
+    <string name="guest_mode_label">ゲストモード</string>
+    <string name="guest_mode_remaining">ゲストモード · 残り %1$d 回の無料シミュレーション</string>
+    <string name="guest_quota_exhausted_title">ゲストの無料回数を使い切りました</string>
+    <string name="guest_quota_exhausted_message">ゲストは %1$d 回まで無料で体験できますが、無料回数を使い切りました。ログイン/登録すると引き続き利用できます。購読会員は無制限に利用できます。</string>
+    <string name="guest_quota_exhausted_login">ログイン / 登録</string>
+    <string name="guest_quota_exhausted_later">後で</string>
+    <string name="usage_guest_exhausted">ゲストの無料回数を使い切りました。ログインすると引き続き利用できます。</string>
+
     <!-- API Errors -->
     <string name="api_error_remaining">残り回数の取得に失敗しました</string>
     <string name="api_error_send_code">認証コードの送信に失敗しました</string>
